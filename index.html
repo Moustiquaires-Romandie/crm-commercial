@@ -131,23 +131,24 @@ textarea{min-height:80px;resize:none}
     </select>
     <select onchange="setAdvFilter('source',this.value)" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
       <option value="">Toutes les sources</option>
-      <option>Facebook</option><option>Instagram</option><option>LinkedIn</option><option>Référence</option><option>Inbound</option><option>Manuel</option>
+      <option>Facebook</option><option>Instagram</option><option>LinkedIn</option><option>Manuel</option><option>Autre</option>
     </select>
     <select onchange="setAdvFilter('ville',this.value)" id="filter-ville" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
       <option value="">Toutes les villes</option>
     </select>
     <select onchange="setAdvFilter('canton',this.value)" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
       <option value="">Tous les cantons</option>
-      <option>Vaud</option><option>Genève</option><option>Fribourg</option><option>Neuchâtel</option><option>Valais</option><option>Jura</option><option>Berne</option><option>Zurich</option><option>Bâle</option><option>Autre</option>
+      <option>Genève</option><option>Vaud</option><option>Neuchâtel</option><option>Jura</option><option>Fribourg</option><option>Valais</option><option>Berne</option>
     </select>
   </div>
-  <div style="padding:4px 12px 8px;background:#f5f5f7;display:flex;align-items:center;gap:8px">
+  <div style="padding:4px 12px 8px;background:#f5f5f7;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <span style="font-size:12px;color:#6e6e73">Trier</span>
     <select id="sort-select" onchange="setSort(this.value)" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;margin-bottom:0">
       <option value="recent">Plus récents d'abord</option>
       <option value="ancien">Plus anciens d'abord</option>
     </select>
-    <button onclick="resetFilters()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:0.5px solid #d1d1d6;background:#fff;color:#6e6e73;cursor:pointer;margin-left:auto">Réinitialiser</button>
+    <input type="text" id="search-input" placeholder="Rechercher..." oninput="setSearch(this.value)" style="flex:1;min-width:140px;padding:4px 10px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;font-size:12px;margin-bottom:0">
+    <button onclick="resetFilters()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:0.5px solid #d1d1d6;background:#fff;color:#6e6e73;cursor:pointer">Réinitialiser</button>
   </div>
   <div class="list" id="leads-list">
     <div class="loading-wrap"><div class="spinner"></div>Chargement des leads...</div>
@@ -193,10 +194,9 @@ textarea{min-height:80px;resize:none}
       <label class="form-label">Canton</label>
       <select id="n-canton">
         <option value="">—</option>
-        <option>Vaud</option><option>Genève</option><option>Fribourg</option>
-        <option>Neuchâtel</option><option>Valais</option><option>Jura</option>
-        <option>Berne</option><option>Zurich</option><option>Bâle</option>
-        <option>Autre</option>
+        <option>Genève</option><option>Vaud</option><option>Neuchâtel</option>
+        <option>Jura</option><option>Fribourg</option><option>Valais</option>
+        <option>Berne</option>
       </select>
       <label class="form-label">Statut</label>
       <select id="n-statut">
@@ -207,6 +207,7 @@ textarea{min-height:80px;resize:none}
       </select>
       <label class="form-label">Assigné à</label>
       <select id="n-commercial">
+        <option value="">— Non assigné —</option>
         <option>Dejan</option>
         <option>Rade</option>
       </select>
@@ -255,6 +256,7 @@ const STATUTS = ['Nouveau','Contacté','A relancer','Perdu'];
 let leads = [];
 let filters = {statut:'',commercial:'',source:'',ville:'',canton:''};
 let sort = 'recent';
+let search = '';
 let user = localStorage.getItem('crm_user') || null;
 
 function syncState(s, label) {
@@ -331,6 +333,9 @@ function setAdvFilter(key, val) {
 
 function resetFilters() {
   filters = {statut:'',commercial:'',source:'',ville:'',canton:''};
+  search = '';
+  const si = document.getElementById('search-input');
+  if (si) si.value = '';
   document.querySelectorAll('.filters select, div select[onchange*=setAdvFilter]').forEach(s => s.selectedIndex = 0);
   renderLeads();
 }
@@ -384,6 +389,11 @@ function formatDate(val) {
   return val;
 }
 
+function setSearch(val) {
+  search = val.toLowerCase();
+  renderLeads();
+}
+
 function setSort(s) {
   sort = s;
   renderLeads();
@@ -399,10 +409,16 @@ function renderLeads() {
     list = list.filter(l => !l.commercial || l.commercial === user);
   }
   if (filters.statut) list = list.filter(l => l.statut === filters.statut);
-  if (filters.commercial) list = list.filter(l => l.commercial === filters.commercial);
+  if (filters.commercial) list = list.filter(l => (l.commercial || '').trim() === filters.commercial.trim());
   if (filters.source) list = list.filter(l => l.source === filters.source);
   if (filters.ville) list = list.filter(l => l.ville === filters.ville);
   if (filters.canton) list = list.filter(l => l.canton === filters.canton);
+  if (search) list = list.filter(l =>
+    (l.nom||'').toLowerCase().includes(search) ||
+    (l.email||'').toLowerCase().includes(search) ||
+    (l.tel||'').toLowerCase().includes(search) ||
+    (l.ville||'').toLowerCase().includes(search)
+  );
   const el = document.getElementById('leads-list');
   if (!list.length) {
     el.innerHTML = '<div class="loading-wrap">Aucun lead dans cette catégorie.</div>';
@@ -453,7 +469,7 @@ function openDetail(rowIndex) {
       <input type="text" id="e-email" value="${l.email || ''}" placeholder="ex. jean@exemple.com">
       <label class="form-label">Source</label>
       <select id="e-source">
-        ${['Facebook','Instagram','LinkedIn','Référence','Inbound','Manuel','Autre'].map(s => `<option${s === l.source ? ' selected' : ''}>${s}</option>`).join('')}
+        ${['Facebook','Instagram','LinkedIn','Manuel','Autre'].map(s => `<option${s === l.source ? ' selected' : ''}>${s}</option>`).join('')}
       </select>
       <label class="form-label">Statut</label>
       <select id="e-statut">
@@ -471,7 +487,7 @@ function openDetail(rowIndex) {
       <input type="text" id="e-ville" value="${l.ville || ''}" placeholder="ex. Lausanne">
       <label class="form-label">Canton</label>
       <select id="e-canton">
-        ${['','Vaud','Genève','Fribourg','Neuchâtel','Valais','Jura','Berne','Zurich','Bâle','Autre'].map(s => `<option value="${s}"${s === l.canton ? ' selected' : ''}>${s||'—'}</option>`).join('')}
+        ${['','Genève','Vaud','Neuchâtel','Jura','Fribourg','Valais','Berne'].map(s => `<option value="${s}"${s === l.canton ? ' selected' : ''}>${s||'—'}</option>`).join('')}
       </select>
       <label class="form-label">Prochaine action</label>
       <input type="text" id="e-action" value="${l.action || ''}" placeholder="ex. Relance 20/04">
