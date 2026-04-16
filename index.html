@@ -163,8 +163,7 @@ textarea{min-height:80px;resize:none}
       <input type="text" id="n-adresse" placeholder="ex. Rue de la Paix 12">
       <label class="form-label">Code postal</label>
       <input type="text" id="n-cp" placeholder="ex. 1200">
-      <label class="form-label">Secteur</label>
-      <input type="text" id="n-secteur" placeholder="ex. Restauration">
+
       <label class="form-label">Statut</label>
       <select id="n-statut">
         <option>Nouveau</option>
@@ -405,10 +404,17 @@ function openDetail(rowIndex) {
       ${l.adresse ? `<div class="field-row"><span class="field-label">Adresse</span><span class="field-val">${l.adresse}</span></div>` : ''}
       ${l.cp ? `<div class="field-row"><span class="field-label">Code postal</span><span class="field-val">${l.cp}</span></div>` : ''}
       <div class="field-row"><span class="field-label">Source</span><span class="field-val">${l.source || '—'}</span></div>
-      <div class="field-row"><span class="field-label">Secteur</span><span class="field-val">${l.secteur || '—'}</span></div>
     </div>
     <div class="section">
       <div class="section-title">Modifier</div>
+      <label class="form-label">Nom complet</label>
+      <input type="text" id="e-nom" value="${l.nom || ''}" placeholder="ex. Jean Dupont">
+      <label class="form-label">Email</label>
+      <input type="text" id="e-email" value="${l.email || ''}" placeholder="ex. jean@exemple.com">
+      <label class="form-label">Source</label>
+      <select id="e-source">
+        ${['Facebook','Instagram','LinkedIn','Référence','Inbound','Manuel','Autre'].map(s => `<option${s === l.source ? ' selected' : ''}>${s}</option>`).join('')}
+      </select>
       <label class="form-label">Statut</label>
       <select id="e-statut">
         ${STATUTS.map(s => `<option${s === l.statut ? ' selected' : ''}>${s}</option>`).join('')}
@@ -438,6 +444,9 @@ function openDetail(rowIndex) {
 function saveChanges(rowIndex) {
   const l = leads.find(x => x.i === rowIndex);
   if (!l) return;
+  l.nom = document.getElementById('e-nom').value;
+  l.email = document.getElementById('e-email').value;
+  l.source = document.getElementById('e-source').value;
   l.statut = document.getElementById('e-statut').value;
   l.commercial = document.getElementById('e-commercial').value;
   l.adresse = document.getElementById('e-adresse').value;
@@ -487,7 +496,7 @@ async function saveNewLead() {
   }
 
   // Vider le formulaire
-  ['n-nom','n-entreprise','n-email','n-tel','n-adresse','n-cp','n-secteur','n-action','n-notes'].forEach(id => {
+  ['n-nom','n-entreprise','n-email','n-tel','n-adresse','n-cp','n-action','n-notes'].forEach(id => {
     document.getElementById(id).value = '';
   });
 
