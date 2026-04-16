@@ -687,6 +687,106 @@ function renderStats() {
   `;
 }
 
+function drawPie(canvas, data, colors) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width/2, cy = canvas.height/2, r = Math.min(cx,cy)-10;
+  const total = data.reduce((a,b)=>a+b.v,0);
+  if (!total) { ctx.fillStyle='#e5e5e7'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); return; }
+  let angle = -Math.PI/2;
+  data.forEach((d,i) => {
+    const slice = (d.v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,angle,angle+slice);
+    ctx.closePath(); ctx.fillStyle=colors[i%colors.length]; ctx.fill();
+    angle += slice;
+  });
+  // Légende
+  let ly = cy*2 - data.length*14 + 4;
+  data.forEach((d,i) => {
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.fillRect(4, ly, 10, 10);
+    ctx.fillStyle='#1d1d1f'; ctx.font='10px Arial';
+    ctx.fillText(d.l+' ('+d.v+')', 18, ly+9);
+    ly += 14;
+  });
+}
+
+function drawBars(canvas, data, colors) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height, pad=30, barH=22, gap=8;
+  const max = Math.max(...data.map(d=>d.v), 1);
+  data.forEach((d,i) => {
+    const y = pad/2 + i*(barH+gap);
+    const bw = ((W-80)/max)*d.v;
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.beginPath(); ctx.roundRect(60,y,Math.max(bw,2),barH,4); ctx.fill();
+    ctx.fillStyle='#1d1d1f'; ctx.font='11px Arial'; ctx.textAlign='right';
+    ctx.fillText(d.l, 55, y+barH/2+4);
+    ctx.fillStyle='#6e6e73'; ctx.textAlign='left';
+    ctx.fillText(d.v, 60+bw+6, y+barH/2+4);
+  });
+}
+
+function drawLine(canvas, data) {
+  if (!canvas || !data.length) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height, pad=24;
+  const max = Math.max(...data.map(d=>d.v), 1);
+  const pts = data.map((d,i) => ({
+    x: pad + i*(W-2*pad)/(Math.max(data.length-1,1)),
+    y: H-pad - (d.v/max)*(H-2*pad)
+  }));
+  // Grille
+  ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(p => {
+    const y = H-pad - p*(H-2*pad);
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  });
+  // Ligne
+  ctx.strokeStyle='#1a56db'; ctx.lineWidth=2; ctx.lineJoin='round';
+  ctx.beginPath(); pts.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+  // Points et labels
+  pts.forEach((p,i) => {
+    ctx.fillStyle='#1a56db'; ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#6e6e73'; ctx.font='9px Arial'; ctx.textAlign='center';
+    ctx.fillText(data[i].l, p.x, H-4);
+    if (data[i].v > 0) { ctx.fillStyle='#1d1d1f'; ctx.fillText(data[i].v, p.x, p.y-6); }
+  });
+}
+
+function drawCharts(list, nouveaux, contactes, aRelancer, perdus, fb, ig, li2, manuel, dejan, rade) {
+  const pieColors = ['#1a56db','#e65100','#7e22ce','#c62828'];
+  const srcColors = ['#1877f2','#e1306c','#0077b5','#888'];
+
+  drawPie(document.getElementById('chart-statut'), [
+    {l:'Nouveau',v:nouveaux},{l:'Contacté',v:contactes},
+    {l:'A relancer',v:aRelancer},{l:'Perdu',v:perdus}
+  ].filter(d=>d.v), pieColors);
+
+  drawPie(document.getElementById('chart-source'), [
+    {l:'Facebook',v:fb},{l:'Instagram',v:ig},{l:'LinkedIn',v:li2},{l:'Manuel',v:manuel}
+  ].filter(d=>d.v), srcColors);
+
+  drawBars(document.getElementById('chart-commercial'), [
+    {l:'Dejan',v:dejan},{l:'Rade',v:rade}
+  ], ['#1a56db','#0f6e56']);
+
+  // Évolution par mois
+  const months = {};
+  list.forEach(l => {
+    const ts = parseDateForSort(l.date);
+    if (!ts) return;
+    const d = new Date(ts);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl = String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear().toString().slice(2);
+    months[key] = {l:lbl, v:(months[key]?.v||0)+1};
+  });
+  const evo = Object.keys(months).sort().map(k=>months[k]);
+  drawLine(document.getElementById('chart-evolution'), evo);
+}
+
 function exportPDF() {
   const com = document.getElementById('st-commercial')?.value || 'Tous';
   const sta = document.getElementById('st-statut')?.value || 'Tous';
