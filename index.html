@@ -151,7 +151,7 @@ textarea{min-height:80px;resize:none}
   <div class="detail">
     <div class="section">
       <div class="section-title">Nouveau lead</div>
-      <label class="form-label">Nom *</label>
+      <label class="form-label">Nom complet *</label>
       <input type="text" id="n-nom" placeholder="ex. Jean Dupont">
       <label class="form-label">Entreprise</label>
       <input type="text" id="n-entreprise" placeholder="ex. Boulangerie Martin">
@@ -159,11 +159,20 @@ textarea{min-height:80px;resize:none}
       <input type="email" id="n-email" placeholder="contact@exemple.com">
       <label class="form-label">Téléphone</label>
       <input type="tel" id="n-tel" placeholder="+41 79 123 45 67">
+      <label class="form-label">Source</label>
+      <select id="n-source">
+        <option>Facebook</option>
+        <option>Instagram</option>
+        <option>LinkedIn</option>
+        <option>Référence</option>
+        <option>Inbound</option>
+        <option>Manuel</option>
+        <option>Autre</option>
+      </select>
       <label class="form-label">Adresse</label>
       <input type="text" id="n-adresse" placeholder="ex. Rue de la Paix 12">
       <label class="form-label">Code postal</label>
       <input type="text" id="n-cp" placeholder="ex. 1200">
-
       <label class="form-label">Statut</label>
       <select id="n-statut">
         <option>Nouveau</option>
