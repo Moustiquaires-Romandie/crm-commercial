@@ -226,6 +226,34 @@ textarea{min-height:80px;resize:none}
 
 <!-- PAGE STATS -->
 <div id="page-stats" class="page">
+  <div style="padding:12px 12px 4px;background:#f5f5f7;display:flex;flex-wrap:wrap;gap:6px">
+    <select id="st-commercial" onchange="renderStats()" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
+      <option value="">Tous les commerciaux</option>
+      <option>Dejan</option><option>Rade</option>
+    </select>
+    <select id="st-statut" onchange="renderStats()" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
+      <option value="">Tous les statuts</option>
+      <option>Nouveau</option><option>Contacté</option><option>A relancer</option><option>Perdu</option>
+    </select>
+    <select id="st-source" onchange="renderStats()" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
+      <option value="">Toutes les sources</option>
+      <option>Facebook</option><option>Instagram</option><option>LinkedIn</option><option>Manuel</option><option>Autre</option>
+    </select>
+    <select id="st-canton" onchange="renderStats()" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
+      <option value="">Tous les cantons</option>
+      <option>Genève</option><option>Vaud</option><option>Neuchâtel</option><option>Jura</option><option>Fribourg</option><option>Valais</option><option>Berne</option>
+    </select>
+    <select id="st-periode" onchange="renderStats()" style="font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid #d1d1d6;background:#fff;color:#1d1d1f;flex:1;min-width:120px;margin-bottom:0">
+      <option value="">Toute la période</option>
+      <option value="7">7 derniers jours</option>
+      <option value="30">30 derniers jours</option>
+      <option value="90">90 derniers jours</option>
+    </select>
+  </div>
+  <div style="padding:4px 12px 8px;background:#f5f5f7;display:flex;gap:8px">
+    <button onclick="resetStatsFilters()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:0.5px solid #d1d1d6;background:#fff;color:#6e6e73;cursor:pointer">Réinitialiser</button>
+    <button onclick="exportPDF()" style="font-size:12px;padding:5px 14px;border-radius:8px;background:#1a56db;color:#fff;border:none;cursor:pointer;font-weight:500;margin-left:auto">Exporter PDF</button>
+  </div>
   <div class="stats-wrap" id="stats-content">
     <div class="loading-wrap"><div class="spinner"></div>Chargement...</div>
   </div>
@@ -575,6 +603,53 @@ function showToast(id, msg, isError) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+function resetStatsFilters() {
+  ['st-commercial','st-statut','st-source','st-canton','st-periode'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.selectedIndex = 0;
+  });
+  renderStats();
+}
+
+function getStatsFiltered() {
+  let list = [...leads];
+  const com = document.getElementById('st-commercial')?.value || '';
+  const sta = document.getElementById('st-statut')?.value || '';
+  const src = document.getElementById('st-source')?.value || '';
+  const can = document.getElementById('st-canton')?.value || '';
+  const per = parseInt(document.getElementById('st-periode')?.value || '0');
+  if (com) list = list.filter(l => l.commercial === com);
+  if (sta) list = list.filter(l => l.statut === sta);
+  if (src) list = list.filter(l => l.source === src);
+  if (can) list = list.filter(l => l.canton === can);
+  if (per) {
+    const cutoff = Date.now() - per * 86400000;
+    list = list.filter(l => parseDateForSort(l.date) >= cutoff);
+  }
+  return list;
+}
+
+function count(list, key, val) {
+  return list.filter(l => l[key] === val).length;
+}
+
+function pct(a, b) {
+  return b ? Math.round(a/b*100) : 0;
+}
+
+function statBar(label, val, total, color) {
+  const p = pct(val, total);
+  return `<div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+      <span style="color:var(--color-text-primary)">${label}</span>
+      <span style="font-weight:500">${val} <span style="color:#6e6e73;font-weight:400">(${p}%)</span></span>
+    </div>
+    <div style="height:6px;background:#e5e5e7;border-radius:3px">
+      <div style="height:6px;border-radius:3px;background:${color};width:${p}%"></div>
+    </div>
+  </div>`;
+}
+
 function renderStats() {
   let list = leads;
   if (user && user !== 'Tous') {
@@ -610,6 +685,78 @@ function renderStats() {
       </div>
     `).join('') : '<div style="color:#6e6e73;font-size:13px;padding:10px 0">Aucune action planifiée</div>'}
   `;
+}
+
+function exportPDF() {
+  const com = document.getElementById('st-commercial')?.value || 'Tous';
+  const sta = document.getElementById('st-statut')?.value || 'Tous';
+  const src = document.getElementById('st-source')?.value || 'Toutes';
+  const can = document.getElementById('st-canton')?.value || 'Tous';
+  const per = document.getElementById('st-periode')?.value || '';
+  const list = getStatsFiltered();
+  const total = list.length;
+  const nouveaux = count(list,'statut','Nouveau');
+  const contactes = count(list,'statut','Contacté');
+  const aRelancer = count(list,'statut','A relancer');
+  const perdus = count(list,'statut','Perdu');
+  const dejan = list.filter(l => l.commercial==='Dejan').length;
+  const rade = list.filter(l => l.commercial==='Rade').length;
+  const fb = count(list,'source','Facebook');
+  const ig = count(list,'source','Instagram');
+  const li2 = count(list,'source','LinkedIn');
+  const manuel = count(list,'source','Manuel');
+  const now = new Date().toLocaleDateString('fr-CH');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Rapport CRM - ${now}</title>
+  <style>
+    body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#1d1d1f;font-size:14px}
+    h1{font-size:22px;margin-bottom:4px}
+    .sub{color:#6e6e73;font-size:13px;margin-bottom:24px}
+    .filters{background:#f5f5f7;border-radius:8px;padding:12px;margin-bottom:24px;font-size:12px;color:#6e6e73}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:24px}
+    .metric{background:#f5f5f7;border-radius:8px;padding:14px;text-align:center}
+    .metric-num{font-size:28px;font-weight:700}
+    .metric-lbl{font-size:11px;color:#6e6e73;margin-top:4px}
+    h3{font-size:14px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 10px}
+    .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .bar-label{width:120px;font-size:13px}
+    .bar-track{flex:1;height:8px;background:#e5e5e7;border-radius:4px}
+    .bar-fill{height:8px;border-radius:4px;background:#1a56db}
+    .bar-val{width:60px;text-align:right;font-size:13px;color:#6e6e73}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th{text-align:left;font-size:11px;color:#6e6e73;text-transform:uppercase;letter-spacing:.04em;padding:6px 0;border-bottom:1px solid #e5e5e7}
+    td{padding:8px 0;font-size:13px;border-bottom:1px solid #f5f5f7}
+    @media print{body{margin:20px}}
+  </style></head><body>
+  <h1>Rapport CRM — Moustiquaires Romandie</h1>
+  <div class="sub">Généré le ${now}</div>
+  <div class="filters">
+    Filtres appliqués : Commercial = ${com} | Statut = ${sta} | Source = ${src} | Canton = ${can}${per ? ' | Période = '+per+' jours' : ''}
+  </div>
+  <div class="grid">
+    <div class="metric"><div class="metric-num">${total}</div><div class="metric-lbl">Total leads</div></div>
+    <div class="metric"><div class="metric-num">${nouveaux}</div><div class="metric-lbl">Nouveaux</div></div>
+    <div class="metric"><div class="metric-num">${contactes}</div><div class="metric-lbl">Contactés</div></div>
+    <div class="metric"><div class="metric-num">${perdus}</div><div class="metric-lbl">Perdus</div></div>
+  </div>
+  <h3>Par statut</h3>
+  ${[['Nouveaux',nouveaux,'#1a56db'],['Contactés',contactes,'#e65100'],['À relancer',aRelancer,'#7e22ce'],['Perdus',perdus,'#c62828']].map(([l,v,c])=>`
+  <div class="bar-row"><div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${total?Math.round(v/total*100):0}%;background:${c}"></div></div><div class="bar-val">${v} (${total?Math.round(v/total*100):0}%)</div></div>`).join('')}
+  <h3>Par commercial</h3>
+  ${[['Dejan',dejan],['Rade',rade]].map(([l,v])=>`
+  <div class="bar-row"><div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${total?Math.round(v/total*100):0}%"></div></div><div class="bar-val">${v} (${total?Math.round(v/total*100):0}%)</div></div>`).join('')}
+  <h3>Par source</h3>
+  ${[['Facebook',fb,'#1877f2'],['Instagram',ig,'#e1306c'],['LinkedIn',li2,'#0077b5'],['Manuel',manuel,'#888']].map(([l,v,c])=>`
+  <div class="bar-row"><div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${total?Math.round(v/total*100):0}%;background:${c}"></div></div><div class="bar-val">${v} (${total?Math.round(v/total*100):0}%)</div></div>`).join('')}
+  <h3>Liste des leads (${total})</h3>
+  <table><thead><tr><th>Nom</th><th>Statut</th><th>Commercial</th><th>Source</th><th>Date</th></tr></thead><tbody>
+  ${list.map(l=>`<tr><td>${l.nom}</td><td>${l.statut}</td><td>${l.commercial||'—'}</td><td>${l.source||'—'}</td><td>${formatDate(l.date)}</td></tr>`).join('')}
+  </tbody></table>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
 }
 
 initUser();
