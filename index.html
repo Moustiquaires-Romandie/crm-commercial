@@ -113,7 +113,6 @@ textarea{min-height:80px;resize:none}
 
 <div class="nav">
   <button class="nav-btn active" id="nb-leads" onclick="showPage('leads')">Leads</button>
-  <button class="nav-btn" id="nb-detail" onclick="showPage('detail')">Fiche</button>
   <button class="nav-btn" id="nb-stats" onclick="showPage('stats')">Stats</button>
   <button class="nav-btn" id="nb-new" onclick="showPage('new')" style="display:none">+ Nouveau</button>
 </div>
@@ -546,6 +545,7 @@ function saveChanges(rowIndex) {
   l.action = document.getElementById('e-action').value;
   l.notes = document.getElementById('e-notes').value;
   showToast('toast-detail', 'Modifications sauvegardées !', false);
+  setTimeout(() => showPage('leads'), 1000);
   renderLeads();
   renderStats();
 }
